@@ -1,4 +1,5 @@
-import { Navigate, Outlet, RouteObject, RouterProvider, createBrowserRouter } from 'react-router-dom'
+import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router-dom'
+import type { RouteObject } from 'react-router-dom'
 import { useAuthStore } from './store/auth'
 import { Layout } from './components/Layout'
 import TechnicalOfficerDashboard from './pages/TechnicalOfficerDashboard'

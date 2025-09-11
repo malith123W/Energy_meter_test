@@ -3,6 +3,7 @@ import { useReportsStore } from '../store/reports'
 import { useEffect, useMemo, useState } from 'react'
 import { useAuthStore } from '../store/auth'
 import ReportFilters from '../components/ReportFilters'
+// type import only to satisfy verbatimModuleSyntax; value not used directly
 import type { Report } from '../types'
 
 type Key = string

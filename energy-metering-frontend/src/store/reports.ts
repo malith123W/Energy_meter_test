@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { nanoid } from '../utils/nanoid'
-import type { Attachment, Report, ReportDetails, ReportStatus, UserRole } from '../types'
+import type { Attachment, Report, ReportDetails, ReportStatus, UserRole, ReportHistoryEntry } from '../types'
 
 interface ReportsState {
   reports: Report[]
@@ -66,12 +66,12 @@ function seedReports(): Report[] {
       testDate: now,
       remarks: idx % 2 === 0 ? 'Initial import' : undefined,
     }
-    const history = [
-      { timestamp: now, action: 'CREATED', byRole: 'SYSTEM' as UserRole, note: 'Seed data' },
+    const history: ReportHistoryEntry[] = [
+      { timestamp: now, action: 'CREATED', byRole: 'SYSTEM', note: 'Seed data' },
     ]
     return {
       id,
-      status,
+      status: status as ReportStatus,
       createdAt: now,
       updatedAt: now,
       details,
