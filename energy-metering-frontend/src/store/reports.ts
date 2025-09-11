@@ -9,9 +9,12 @@ interface ReportsState {
     branchName?: string
     transformerNumber?: string
     status?: ReportStatus
+    fromDate?: string
+    toDate?: string
   }) => Report[]
 
   updateDetails: (id: string, details: Partial<ReportDetails>) => void
+  updateTestData: (id: string, updates: Record<string, unknown>) => void
   addAttachments: (id: string, files: Array<{ name: string; mimeType: string; sizeBytes: number; url: string }>) => void
   removeAttachment: (id: string, attachmentId: string) => void
 
@@ -84,12 +87,15 @@ function seedReports(): Report[] {
 export const useReportsStore = create<ReportsState>((set, get) => ({
   reports: load(),
   getById: (id) => get().reports.find((r) => r.id === id),
-  filter: ({ branchName, transformerNumber, status }) => {
+  filter: ({ branchName, transformerNumber, status, fromDate, toDate }) => {
     return get().reports.filter((r) => {
       const matchesBranch = branchName ? r.details.branchName.toLowerCase().includes(branchName.toLowerCase()) : true
       const matchesTx = transformerNumber ? r.details.transformerNumber.toLowerCase().includes(transformerNumber.toLowerCase()) : true
       const matchesStatus = status ? r.status === status : true
-      return matchesBranch && matchesTx && matchesStatus
+      const testDateMs = new Date(r.details.testDate).getTime()
+      const afterFrom = fromDate ? testDateMs >= new Date(fromDate).getTime() : true
+      const beforeTo = toDate ? testDateMs <= new Date(toDate).getTime() : true
+      return matchesBranch && matchesTx && matchesStatus && afterFrom && beforeTo
     })
   },
 
@@ -101,6 +107,21 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
         details: { ...r.details, ...details },
         updatedAt: new Date().toISOString(),
         history: [...r.history, { timestamp: new Date().toISOString(), action: 'EDITED', byRole: 'TECHNICAL_OFFICER', note: 'Details updated' }],
+      }
+      return updated
+    })
+    save(reports)
+    return { reports }
+  }),
+
+  updateTestData: (id, updates) => set((state) => {
+    const reports = state.reports.map((r) => {
+      if (r.id !== id) return r
+      const updated: Report = {
+        ...r,
+        testData: { ...r.testData, ...updates },
+        updatedAt: new Date().toISOString(),
+        history: [...r.history, { timestamp: new Date().toISOString(), action: 'EDITED', byRole: 'TECHNICAL_OFFICER', note: 'Test data updated' }],
       }
       return updated
     })
