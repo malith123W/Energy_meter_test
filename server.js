@@ -22,13 +22,27 @@ mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+.then(async () => {
+  console.log('MongoDB connected successfully');
+  
+  // Initialize GridFS after MongoDB connection is established
+  try {
+    const gridFSService = require('./services/gridfsService');
+    await gridFSService.ensureInitialized();
+  } catch (error) {
+    console.warn('GridFS initialization failed, but server will continue:', error.message);
+  }
+})
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  console.log('Server will continue without database functionality');
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/test-data', require('./routes/testData'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Serve static assets if in production
 if (process.env.NODE_ENV === 'production') {

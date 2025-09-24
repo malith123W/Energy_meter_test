@@ -1,273 +1,251 @@
-# Energy Meter Test System
+# LECO Energy Meter Test Report Management System
 
-A comprehensive MERN stack web application for performing Energy Meter Accuracy Tests with automated report generation and management.
+A comprehensive MERN stack web application for managing Energy Meter Accuracy Test Reports with role-based access control and digital report generation.
 
 ## Features
 
-### 🔐 Authentication System
-- Secure user login with JWT tokens
-- Role-based access control (Admin, Technician, Viewer)
-- Session management and automatic logout
+### 🔐 Authentication & Authorization
+- Secure login system with JWT tokens
+- Role-based access control with four user types:
+  - **Administrator**: Full system access
+  - **Technical Officer**: Create and manage test reports
+  - **Chief Engineer**: Review and approve/reject reports
+  - **Branch Viewer**: View approved reports only
 
-### 📝 Data Input & Report Generation
-- Comprehensive test data entry form
-- Real-time error calculation and validation
-- Automated PDF report generation
-- Local report storage and management
+### 📊 Report Management
+- **Digital Report Creation**: Multi-step form matching LECO Bulk Meter Test Report structure
+- **Report Repository**: Advanced filtering, searching, and pagination
+- **Role-based Interactions**:
+  - Technical Officers: Create, edit, and manage their reports
+  - Chief Engineers: Review, approve, or reject reports
+  - Branch Viewers: View approved reports in read-only mode
 
-### 📊 Report Repository
-- Advanced search and filtering capabilities
-- Sort by branch, date, transformer number
-- Pagination for large datasets
-- Download and view reports
+### 📋 Report Structure
+The application follows the exact LECO Bulk Meter Test Report format including:
 
-### 🎨 Modern UI/UX
-- Responsive Bootstrap design
-- Dark navigation with intuitive icons
+#### Header Information
+- Report Number (auto-generated: FT-YYYYMM-XXXX)
+- Date of Tested, Branch, CSC, Location
+- Substation Number, Account Number, Contract Demand
+- Reason, Request ID, Requested By
+
+#### Technical Sections
+- **Current Transformer**: Make, Ratio
+- **Static Meter**: Make, Serial Number, Meter Constant, Class, Current, Voltage, Tester details
+- **Check Section**: Physical condition, ratios, connections, phase sequence, earthing, error measurements
+- **Measurings**: Energy kWh, Demand kVA, Reactive Energy kVArh with import/export rates
+- **Phases**: Voltage and current readings for R, Y, B phases
+- **Comments & Signatures**: Technical Officer and Chief Engineer signatures
+
+### 🎨 User Interface
+- Modern, responsive Material-UI design
+- Intuitive navigation with role-based menu items
 - Real-time form validation
-- Toast notifications for user feedback
+- Interactive data tables with sorting and filtering
+- Professional report viewing interface
 
 ## Technology Stack
 
-- **Frontend**: React.js, React Router, Bootstrap, React-Bootstrap
-- **Backend**: Node.js, Express.js
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: JSON Web Tokens (JWT)
-- **PDF Generation**: PDFKit
-- **Styling**: Bootstrap 5, FontAwesome icons
+### Backend
+- **Node.js** with Express.js
+- **MongoDB** with Mongoose ODM
+- **JWT** for authentication
+- **bcryptjs** for password hashing
+- **PDFKit** for report generation
+- **Express Validator** for input validation
+
+### Frontend
+- **React.js** with TypeScript
+- **Material-UI** for components
+- **React Router** for navigation
+- **React Hook Form** with Yup validation
+- **Axios** for API communication
 
 ## Installation & Setup
 
 ### Prerequisites
 - Node.js (v14 or higher)
-- MongoDB (local or cloud instance)
-- npm or yarn package manager
+- MongoDB (local or cloud)
+- npm or yarn
 
-### 1. Clone and Install Dependencies
+### Backend Setup
 
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd energy-meter-test-app
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Environment Configuration**
+   Create a `.env` file in the root directory:
+   ```env
+   MONGODB_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret_key
+   JWT_EXPIRE=7d
+   PORT=5000
+   NODE_ENV=development
+   ```
+
+4. **Seed the database**
+   ```bash
+   npm run seed
+   ```
+   This creates sample users for testing:
+   - Admin: `admin` / `admin123`
+   - Technical Officer: `tech_officer1` / `tech123`
+   - Chief Engineer: `chief_engineer1` / `chief123`
+   - Branch Viewer: `branch_viewer1` / `viewer123`
+
+5. **Start the server**
+   ```bash
+   npm run dev
+   ```
+
+### Frontend Setup
+
+1. **Navigate to client directory**
+   ```bash
+   cd client
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start the development server**
+   ```bash
+   npm start
+   ```
+
+4. **Access the application**
+   Open [http://localhost:3000](http://localhost:3000) in your browser
+
+### Full Stack Development
+
+To run both backend and frontend simultaneously:
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd energy-meter-test-app
-
-# Install backend dependencies
-npm install
-
-# Install frontend dependencies
-cd client
-npm install
-cd ..
-```
-
-### 2. Environment Configuration
-
-Create a `.env` file in the root directory:
-
-```env
-NODE_ENV=development
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/energy_meter_test
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_EXPIRE=7d
-```
-
-### 3. Database Setup
-
-Start MongoDB service, then seed the database with initial users:
-
-```bash
-# Create initial admin and technician users
-node scripts/seedAdmin.js
-```
-
-This will create:
-- **Admin User**: Username: `admin`, Password: `admin123`
-- **Technician User**: Username: `technician1`, Password: `tech123`
-
-### 4. Run the Application
-
-#### Development Mode (Both Frontend and Backend)
-```bash
-# Install concurrently if not already installed
-npm install -g concurrently
-
-# Run both frontend and backend simultaneously
 npm run dev-full
 ```
-
-#### Manual Mode
-```bash
-# Terminal 1: Run backend server
-npm run dev
-
-# Terminal 2: Run frontend (in a new terminal)
-cd client
-npm start
-```
-
-The application will be available at:
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:5000
-
-## User Guide
-
-### 1. Logging In
-- Access the application at http://localhost:3000
-- Use the credentials provided above or create new users
-- The system supports username or email for login
-
-### 2. Creating Test Reports
-1. Navigate to "New Test" from the dashboard
-2. Fill in the required information:
-   - Basic details (Branch, Transformer Number)
-   - Meter details (Number, Type, Class, Manufacturer)
-   - Test conditions (Temperature, Humidity, Frequency)
-   - Load test data (multiple test points supported)
-3. The system automatically calculates error percentages
-4. Submit to create the report
-
-### 3. Managing Reports
-- View all reports in the "Reports" section
-- Use search and filters to find specific reports
-- Click "View" to see detailed report information
-- Generate and download PDF reports
-- Reports are automatically stored locally
-
-### 4. Dashboard Overview
-- View recent test statistics
-- Quick access to common actions
-- Real-time data updates
 
 ## API Endpoints
 
 ### Authentication
 - `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration (admin only)
+- `POST /api/auth/register` - User registration
 - `GET /api/auth/profile` - Get user profile
 - `PUT /api/auth/profile` - Update user profile
 
-### Test Data
-- `GET /api/test-data` - Get all test reports (with filtering)
-- `POST /api/test-data` - Create new test report
-- `GET /api/test-data/:id` - Get specific test report
-- `PUT /api/test-data/:id` - Update test report
-- `DELETE /api/test-data/:id` - Delete test report
-
-### Reports
-- `POST /api/reports/generate/:id` - Generate PDF report
-- `GET /api/reports/download/:filename` - Download report file
-- `GET /api/reports/list` - Get list of generated reports
-- `DELETE /api/reports/:id` - Delete report file
-
-## Project Structure
-
-```
-energy-meter-test-app/
-├── client/                 # React frontend
-│   ├── public/
-│   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── contexts/       # React contexts
-│   │   └── App.js         # Main App component
-│   └── package.json
-├── models/                 # MongoDB models
-│   ├── User.js
-│   └── TestReport.js
-├── routes/                 # Express routes
-│   ├── auth.js
-│   ├── testData.js
-│   └── reports.js
-├── middleware/            # Custom middleware
-│   └── auth.js
-├── scripts/               # Utility scripts
-│   └── seedAdmin.js
-├── uploads/               # Generated reports storage
-├── server.js              # Express server
-├── package.json
-└── README.md
-```
-
-## Key Features Explained
+### Test Reports
+- `GET /api/test-data` - Get all reports (with filtering)
+- `GET /api/test-data/:id` - Get specific report
+- `POST /api/test-data` - Create new report
+- `PUT /api/test-data/:id` - Update report
+- `DELETE /api/test-data/:id` - Delete report
+- `PUT /api/test-data/:id/approve` - Approve report
+- `PUT /api/test-data/:id/reject` - Reject report
 
 ### Report Generation
-- Uses PDFKit for server-side PDF generation
-- Automatically includes all test data and calculations
-- Professional formatting with tables and charts
-- Stored locally for future access
+- `POST /api/reports/generate/:id` - Generate PDF report
+- `GET /api/reports/download/:filename` - Download PDF report
+- `GET /api/reports/list` - Get generated reports list
 
-### Authentication & Security
+## User Roles & Permissions
+
+### Administrator
+- Full system access
+- User management
+- All report operations
+- System configuration
+
+### Technical Officer
+- Create new test reports
+- Edit own reports (if not approved)
+- View own reports
+- Generate PDF reports
+
+### Chief Engineer
+- View all reports
+- Approve or reject pending reports
+- Cannot edit report data
+- Generate PDF reports
+
+### Branch Viewer
+- View approved reports only
+- View reports from their branch only
+- Cannot create, edit, or approve reports
+- Download approved reports
+
+## Report Workflow
+
+1. **Creation**: Technical Officer creates a new test report
+2. **Review**: Report status is set to "pending"
+3. **Approval**: Chief Engineer reviews and approves/rejects
+4. **Finalization**: Approved reports are available to Branch Viewers
+5. **PDF Generation**: Reports can be downloaded as formatted PDFs
+
+## Database Schema
+
+### User Model
+- Username, email, password
+- Role (admin, technical_officer, chief_engineer, branch_viewer)
+- Branch assignment
+- Active status
+
+### TestReport Model
+- Complete LECO report structure
+- Status tracking (draft, pending, approved, rejected)
+- Approval/rejection tracking
+- File path for generated PDFs
+
+## Security Features
+
 - JWT-based authentication
 - Password hashing with bcrypt
 - Role-based access control
-- Protected routes and API endpoints
+- Input validation and sanitization
+- CORS protection
+- Secure file handling
 
-### Data Validation
-- Real-time form validation
-- Server-side validation with express-validator
-- Automatic error percentage calculations
-- Pass/fail determination based on meter class
+## Development
 
-### Search & Filtering
-- Multi-field search functionality
-- Date range filtering
-- Branch and transformer number filtering
-- Pagination for performance
+### Project Structure
+```
+energy-meter-test-app/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/     # Reusable components
+│   │   ├── pages/         # Page components
+│   │   ├── contexts/      # React contexts
+│   │   ├── services/      # API services
+│   │   └── types/         # TypeScript types
+├── models/                # MongoDB models
+├── routes/                # Express routes
+├── middleware/            # Custom middleware
+├── scripts/               # Utility scripts
+└── server.js             # Main server file
+```
 
-## Troubleshooting
-
-### Common Issues
-
-1. **MongoDB Connection Error**
-   - Ensure MongoDB is running
-   - Check the MONGODB_URI in .env file
-   - Verify network connectivity
-
-2. **Frontend Not Loading**
-   - Check if both servers are running
-   - Verify proxy configuration in client/package.json
-   - Clear browser cache
-
-3. **PDF Generation Fails**
-   - Ensure uploads directory exists
-   - Check file permissions
-   - Verify PDFKit installation
-
-4. **Authentication Issues**
-   - Check JWT_SECRET in .env
-   - Verify token expiration settings
-   - Clear localStorage and re-login
-
-### Development Tips
-
-- Use browser developer tools for debugging
-- Check server logs for API errors
-- Use MongoDB Compass for database inspection
-- Enable React Developer Tools for component debugging
-
-## Future Enhancements
-
-- Email notifications for test results
-- Advanced analytics and reporting
-- Multi-language support
-- Mobile responsive improvements
-- Integration with external testing equipment
-- Audit trail and version control for reports
-- Batch testing capabilities
-- Advanced user management
-
-## Support
-
-For technical support or questions:
-1. Check the troubleshooting section above
-2. Review the console logs for error messages
-3. Verify all dependencies are installed correctly
-4. Ensure MongoDB is running and accessible
+### Contributing
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
+
+## Support
+
+For support and questions, please contact the development team or create an issue in the repository.
 
 ---
 
-**Note**: This is a development setup. For production deployment, ensure proper security measures, environment variables, and database security are implemented.
-
+**Built with ❤️ for LECO Energy Meter Testing**

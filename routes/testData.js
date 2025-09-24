@@ -7,18 +7,23 @@ const router = express.Router();
 
 // @route   POST /api/test-data
 // @desc    Create a new test report
-// @access  Private (technician or admin)
-router.post('/', auth, authorize('technician', 'admin'), [
+// @access  Private (technical_officer or admin)
+router.post('/', auth, authorize('technical_officer', 'admin'), [
   body('branch').notEmpty().withMessage('Branch is required'),
-  body('transformerNumber').notEmpty().withMessage('Transformer number is required'),
-  body('meterDetails.meterNumber').notEmpty().withMessage('Meter number is required'),
-  body('meterDetails.meterType').isIn(['Single Phase', 'Three Phase', 'CT Operated', 'Direct Connected']).withMessage('Invalid meter type'),
-  body('meterDetails.meterClass').isIn(['0.5', '1.0', '1.5', '2.0']).withMessage('Invalid meter class'),
-  body('meterDetails.manufacturer').notEmpty().withMessage('Manufacturer is required'),
-  body('meterDetails.yearOfManufacture').isInt({ min: 1990, max: new Date().getFullYear() }).withMessage('Invalid year of manufacture'),
-  body('testData.testConditions.temperature').isFloat({ min: -10, max: 60 }).withMessage('Temperature must be between -10°C and 60°C'),
-  body('testData.testConditions.humidity').isFloat({ min: 0, max: 100 }).withMessage('Humidity must be between 0% and 100%'),
-  body('testData.loadTests').isArray({ min: 1 }).withMessage('At least one load test is required')
+  body('csc').notEmpty().withMessage('CSC is required'),
+  body('location').notEmpty().withMessage('Location is required'),
+  body('substationNumber').notEmpty().withMessage('Substation number is required'),
+  body('accountNumber').notEmpty().withMessage('Account number is required'),
+  body('contractDemand').notEmpty().withMessage('Contract demand is required'),
+  body('requestId').notEmpty().withMessage('Request ID is required'),
+  body('currentTransformer.make').notEmpty().withMessage('CT Make is required'),
+  body('currentTransformer.ratio').notEmpty().withMessage('CT Ratio is required'),
+  body('staticMeter.make').notEmpty().withMessage('Meter Make is required'),
+  body('staticMeter.serialNumber').notEmpty().withMessage('Serial Number is required'),
+  body('checkSection.physicalCondition').isIn(['Good', 'Fair', 'Poor']).withMessage('Invalid physical condition'),
+  body('checkSection.multiplyingFactor').isFloat({ min: 0 }).withMessage('Multiplying factor must be positive'),
+  body('measurings.energyKWh.totalImport').isFloat({ min: 0 }).withMessage('Total import energy must be positive'),
+  body('measurings.averagePowerFactor').isFloat({ min: 0, max: 1 }).withMessage('Power factor must be between 0 and 1')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -33,10 +38,6 @@ router.post('/', auth, authorize('technician', 'admin'), [
       ...req.body,
       createdBy: req.user.id
     };
-
-    // Calculate overall result based on load tests
-    const allTestsPass = testReportData.testData.loadTests.every(test => test.withinLimits);
-    testReportData.testData.overallResult = allTestsPass ? 'PASS' : 'FAIL';
 
     const testReport = new TestReport(testReportData);
     await testReport.save();
@@ -65,42 +66,51 @@ router.get('/', auth, async (req, res) => {
       page = 1,
       limit = 10,
       branch,
-      transformerNumber,
-      meterNumber,
+      substationNumber,
+      accountNumber,
       startDate,
       endDate,
       status,
-      search
+      search,
+      reportNumber,
+      depot
     } = req.query;
 
     // Build filter object
     const filter = {};
 
     // Role-based filtering
-    if (req.user.role === 'technician') {
+    if (req.user.role === 'technical_officer') {
       filter.createdBy = req.user.id;
+    } else if (req.user.role === 'branch_viewer') {
+      filter.status = 'approved';
+      filter.branch = req.user.branch;
     }
 
     if (branch) filter.branch = new RegExp(branch, 'i');
-    if (transformerNumber) filter.transformerNumber = new RegExp(transformerNumber, 'i');
-    if (meterNumber) filter['meterDetails.meterNumber'] = new RegExp(meterNumber, 'i');
+    if (substationNumber) filter.substationNumber = new RegExp(substationNumber, 'i');
+    if (accountNumber) filter.accountNumber = new RegExp(accountNumber, 'i');
+    if (reportNumber) filter.reportNumber = new RegExp(reportNumber, 'i');
+    if (depot) filter.depot = new RegExp(depot, 'i');
     if (status) filter.status = status;
 
     // Date range filter
     if (startDate || endDate) {
-      filter['testData.testDate'] = {};
-      if (startDate) filter['testData.testDate'].$gte = new Date(startDate);
-      if (endDate) filter['testData.testDate'].$lte = new Date(endDate);
+      filter.dateOfTested = {};
+      if (startDate) filter.dateOfTested.$gte = new Date(startDate);
+      if (endDate) filter.dateOfTested.$lte = new Date(endDate);
     }
 
     // General search
     if (search) {
       filter.$or = [
         { branch: new RegExp(search, 'i') },
-        { transformerNumber: new RegExp(search, 'i') },
-        { 'meterDetails.meterNumber': new RegExp(search, 'i') },
-        { 'meterDetails.manufacturer': new RegExp(search, 'i') },
-        { reportNumber: new RegExp(search, 'i') }
+        { substationNumber: new RegExp(search, 'i') },
+        { accountNumber: new RegExp(search, 'i') },
+        { 'staticMeter.serialNumber': new RegExp(search, 'i') },
+        { 'staticMeter.make': new RegExp(search, 'i') },
+        { reportNumber: new RegExp(search, 'i') },
+        { depot: new RegExp(search, 'i') }
       ];
     }
 
@@ -108,7 +118,9 @@ router.get('/', auth, async (req, res) => {
     
     const reports = await TestReport.find(filter)
       .populate('createdBy', 'username email branch')
-      .sort({ 'testData.testDate': -1 })
+      .populate('approvedBy', 'username email')
+      .populate('rejectedBy', 'username email')
+      .sort({ dateOfTested: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
@@ -144,7 +156,9 @@ router.get('/:id', auth, async (req, res) => {
     }
 
     // Check if user has permission to view this report
-    if (req.user.role === 'technician' && report.createdBy._id.toString() !== req.user.id) {
+    if (req.user.role === 'technical_officer' && report.createdBy._id.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    } else if (req.user.role === 'branch_viewer' && (report.status !== 'approved' || report.branch !== req.user.branch)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -174,7 +188,7 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Prevent editing completed reports unless admin
+    // Prevent editing approved reports unless admin
     if (report.status === 'approved' && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Cannot edit approved reports' });
     }
@@ -217,6 +231,91 @@ router.delete('/:id', auth, async (req, res) => {
   } catch (error) {
     console.error('Delete test report error:', error);
     res.status(500).json({ message: 'Server error while deleting test report' });
+  }
+});
+
+// @route   PUT /api/test-data/:id/approve
+// @desc    Approve a test report
+// @access  Private (chief_engineer or admin)
+router.put('/:id/approve', auth, authorize('chief_engineer', 'admin'), async (req, res) => {
+  try {
+    const report = await TestReport.findById(req.params.id);
+
+    if (!report) {
+      return res.status(404).json({ message: 'Test report not found' });
+    }
+
+    if (report.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending reports can be approved' });
+    }
+
+    const updatedReport = await TestReport.findByIdAndUpdate(
+      req.params.id,
+      {
+        status: 'approved',
+        approvedBy: req.user.id,
+        approvedAt: new Date(),
+        technicalOfficerSignature: report.createdBy.username,
+        chiefEngineerSignature: req.user.username,
+      },
+      { new: true, runValidators: true }
+    ).populate('createdBy', 'username email branch')
+     .populate('approvedBy', 'username email');
+
+    res.json({
+      message: 'Report approved successfully',
+      report: updatedReport
+    });
+  } catch (error) {
+    console.error('Approve report error:', error);
+    res.status(500).json({ message: 'Server error while approving report' });
+  }
+});
+
+// @route   PUT /api/test-data/:id/reject
+// @desc    Reject a test report
+// @access  Private (chief_engineer or admin)
+router.put('/:id/reject', auth, authorize('chief_engineer', 'admin'), [
+  body('reason').notEmpty().withMessage('Rejection reason is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const report = await TestReport.findById(req.params.id);
+
+    if (!report) {
+      return res.status(404).json({ message: 'Test report not found' });
+    }
+
+    if (report.status !== 'pending') {
+      return res.status(400).json({ message: 'Only pending reports can be rejected' });
+    }
+
+    const updatedReport = await TestReport.findByIdAndUpdate(
+      req.params.id,
+      {
+        status: 'rejected',
+        rejectedBy: req.user.id,
+        rejectedAt: new Date(),
+        rejectionReason: req.body.reason,
+      },
+      { new: true, runValidators: true }
+    ).populate('createdBy', 'username email branch')
+     .populate('rejectedBy', 'username email');
+
+    res.json({
+      message: 'Report rejected successfully',
+      report: updatedReport
+    });
+  } catch (error) {
+    console.error('Reject report error:', error);
+    res.status(500).json({ message: 'Server error while rejecting report' });
   }
 });
 
